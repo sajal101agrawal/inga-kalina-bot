@@ -230,11 +230,10 @@ def submit_multi_step_zoho_form(url, file_paths, first_name, last_name, email, p
         time.sleep(15)
         
         print("Form submitted successfully!")
+        driver.quit()
         return jsonify({"status": "success"})
             
     except Exception as e:
+        driver.quit()
         print(f"An error occurred: {e}")
         return jsonify({"status": "fail", "error": e})
-
-    finally:
-        driver.quit()

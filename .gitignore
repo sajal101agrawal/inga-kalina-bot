@@ -2,3 +2,4 @@ env/
 venv/
 screenshots/
 .env
+__pycache__
