@@ -251,7 +251,7 @@ def create_whatsapp_html(conversation_part):
 
 
 
-def submit_to_zoho():
+def submit_to_zoho(screenshot_paths):
     """Submit screenshot to Zoho Form"""
 
 
@@ -270,6 +270,7 @@ def generate_screenshots():
         
         # 3. Generate and submit screenshots
         screenshot_paths = []
+        html_paths = []
         
         for i, part in enumerate(parts):
             # Generate HTML
@@ -284,6 +285,8 @@ def generate_screenshots():
             temp_html_path = os.path.join(SCREENSHOT_DIR, f"temp_{unique_id}.html")
             with open(temp_html_path, "w", encoding="utf-8") as f:
                 f.write(html_content)
+            
+            html_paths.append(temp_html_path)
                
             # Create screenshot from HTML string 
             hti.screenshot(
@@ -302,16 +305,22 @@ def generate_screenshots():
     
             screenshot_paths.append(screenshot_path)
             
+        
+        # TEMPORARY RETURN ---------------------------------------------
+        return jsonify({"status": "success", "screenshots": screenshot_paths})
+
 
             
         # 4. Submit screenshots to Zoho Form
-        ## TODO: SUBMIT TO ZOHO FORM
+        submit_to_zoho(screenshot_paths)
         
         # 5 Cleanup temporary files
-        # for path in screenshot_paths:
-        #     os.remove(path)
+        for path in screenshot_paths:
+            os.remove(path)
         
         # 6 Cleanup temporary HTML files
+        for path in html_content:
+             os.remove(path)
             
         return jsonify({"status": "success", "screenshots": len(screenshot_paths)})
     
