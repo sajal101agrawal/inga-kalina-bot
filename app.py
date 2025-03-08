@@ -347,7 +347,7 @@ def run_automation():
 
 # --------------------------------------------------------------
 
-@app.route("/run", methods=["POST"])
+@app.route("/run", methods=["GET"])
 def run():
     try:
         run_automation()
