@@ -30,7 +30,7 @@ ZOHO_FORM_URL = os.getenv("ZOHO_FORM_URL")
 fake = Faker()
 client = OpenAI(api_key=OPENAI_API_KEY)
 hti = Html2Image(
-    browser_executable='/usr/bin/chromium-browser',
+    browser_executable='chromium',
     custom_flags=['--headless=new'],
     output_path=SCREENSHOT_DIR,
     ) 
