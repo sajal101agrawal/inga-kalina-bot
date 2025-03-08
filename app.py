@@ -4,6 +4,7 @@ from openai import OpenAI
 import uuid
 import time
 import os
+import random
 from html2image import Html2Image
 import json
 from faker import Faker 
@@ -46,7 +47,7 @@ WHATSAPP_TEMPLATE = """
     <div class="header">
         <div class="header-content">
             <div class="back-button">‹</div>
-            <div class="profile-pic"></div>
+            <img src="https://picsum.photos/seed/uniqueSeed{uniqueSeedValue}/300/200" class="profile-pic">
             <div class="contact-info">
                 <div class="contact-name">{name}</div>
                 <div class="online-status">online</div>
@@ -167,7 +168,8 @@ body {
 /* Chat Container */
 .chat-container { 
     padding: 5px;
-    height: 550px;  /* 680 - 60 (header) - 60 (input) */
+    padding-top: 0px;
+    height: 560px;  /* 680 - 60 (header) - 60 (input) */
     overflow-y: auto;
 }
 
@@ -222,27 +224,19 @@ def generate_conversation():
     4. Include realistic timing between messages
     5. Use casual language with emojis and typos
     """
+
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.7,
+        response_format={"type": "json_object"}
+    )
     
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.7,
-            response_format={"type": "json_object"}
-        )
-        
-        # Clean response: remove markdown backticks and whitespace
-        raw_json = response.choices[0].message.content
-        clean_json = raw_json.replace('```json', '').replace('```', '').strip()
-        
-        return json.loads(clean_json)
-        
-    except json.JSONDecodeError as e:
-        print(f"JSON Parse Error: {e}\nRaw Response: {raw_json}")
-        return {"error": "Failed to parse conversation"}
-    except Exception as e:
-        print(f"API Error: {str(e)}")
-        return {"error": "Conversation generation failed"}
+    # Clean response: remove markdown backticks and whitespace
+    raw_json = response.choices[0].message.content
+    clean_json = raw_json.replace('```json', '').replace('```', '').strip()
+    
+    return json.loads(clean_json)
      
 def split_conversation(conversation):
     """Split conversation into 3 logical parts for screenshots"""
@@ -253,8 +247,8 @@ def split_conversation(conversation):
         conversation['messages'][2*total//3:]
     ]
     
-# In create_whatsapp_html function:
-def create_whatsapp_html(conversation_part, first_name):
+# Create_whatsapp_html function:
+def create_whatsapp_html(conversation_part, first_name, uniqueSeedValue):
     """Generate WhatsApp-like HTML with full UI and ticks"""
     messages_html = []
     for msg in conversation_part:
@@ -273,6 +267,7 @@ def create_whatsapp_html(conversation_part, first_name):
     return WHATSAPP_TEMPLATE.format(
         css=WHATSAPP_CSS,
         name=first_name,
+        uniqueSeedValue = uniqueSeedValue,
         messages="\n".join(messages_html)
     )
 
@@ -289,66 +284,66 @@ def submit_to_zoho(screenshot_paths, first_name):
     
 def run_automation():
     first_name = fake.first_name()
-    try:
-        # 1. Generate conversation
-        conversation = generate_conversation()
-        if 'error' in conversation:
-            return jsonify({"error": "Conversation generation failed"}), 500
-        
-        # 2. Split conversation into 3 parts
-        parts = split_conversation(conversation)
-        
-        # 3. Generate and submit screenshots
-        screenshot_paths = []
-        html_paths = []
-        
-        for i, part in enumerate(parts):
-            # Generate HTML
-            html_content = create_whatsapp_html(part, first_name)
-            
-            # Generate a unique filename
-            unique_id = str(uuid.uuid4())
-            screenshot_filename = f"screenshot_{unique_id}.png"
-            screenshot_path = os.path.join(SCREENSHOT_DIR, screenshot_filename)
-            
-            # Create temporary HTML file (needed for some versions of html2image)
-            temp_html_path = os.path.join(SCREENSHOT_DIR, f"temp_{unique_id}.html")
-            with open(temp_html_path, "w", encoding="utf-8") as f:
-                f.write(html_content)
-            
-            html_paths.append(temp_html_path)
-               
-            # Create screenshot from HTML string 
-            hti.screenshot(
-                html_str=html_content,
-                save_as=screenshot_filename,
-                size=SCREENSHOT_CONFIG['size']
-            )
-            time.sleep(0.5)
-            # Crop the bottom 100px
-            img = Image.open(screenshot_path)
-            width, height = img.size
-            img.crop((0, 0, width, height - 200)).save(screenshot_path)
 
-            time.sleep(0.5)
-            screenshot_paths.append(screenshot_path)
-            
-        # 4. Submit screenshots to Zoho Form
-        submit_to_zoho(screenshot_paths, first_name)
-        
-        # 5 Cleanup temporary files
-        # for path in screenshot_paths:
-        #     os.remove(path)
-        
-        # 6 Cleanup temporary HTML files
-        for path in html_content:
-             os.remove(path)
-            
-        return jsonify({"status": "success", "screenshots": len(screenshot_paths)})
+    # 1. Generate conversation
+    conversation = generate_conversation()
+    if 'error' in conversation:
+        return jsonify({"error": "Conversation generation failed"}), 500
     
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    # 2. Split conversation into 3 parts
+    parts = split_conversation(conversation)
     
+    # 3. Generate and submit screenshots
+    screenshot_paths = []
+    html_paths = []
+    
+    # Generate random seed value
+    uniqueSeedValue = random.randint(1, 999)
+    
+    for i, part in enumerate(parts):
+        
+        # Generate HTML
+        html_content = create_whatsapp_html(part, first_name, uniqueSeedValue)
+        
+        # Generate a unique filename
+        unique_id = str(uuid.uuid4())
+        screenshot_filename = f"screenshot_{unique_id}.png"
+        screenshot_path = os.path.join(SCREENSHOT_DIR, screenshot_filename)
+        
+        # Create temporary HTML file (needed for some versions of html2image)
+        temp_html_path = os.path.join(SCREENSHOT_DIR, f"temp_{unique_id}.html")
+        with open(temp_html_path, "w", encoding="utf-8") as f:
+            f.write(html_content)
+        
+        html_paths.append(temp_html_path)
+            
+        # Create screenshot from HTML string 
+        hti.screenshot(
+            html_str=html_content,
+            save_as=screenshot_filename,
+            size=SCREENSHOT_CONFIG['size']
+        )
+        time.sleep(0.5)
+        # Crop the bottom 100px
+        img = Image.open(screenshot_path)
+        width, height = img.size
+        img.crop((0, 0, width, height - 200)).save(screenshot_path)
+
+        time.sleep(0.5)
+        screenshot_paths.append(screenshot_path)
+        
+    # 4. Submit screenshots to Zoho Form
+    submit_to_zoho(screenshot_paths, first_name)
+    
+    # 5 Cleanup temporary files
+    # for path in screenshot_paths:
+    #     os.remove(path)
+    
+    # 6 Cleanup temporary HTML files
+    for path in html_paths:
+            os.remove(path)
+        
+    return jsonify({"status": "success", "screenshots": len(screenshot_paths)})
 
 # --------------------------------------------------------------
 
@@ -358,7 +353,7 @@ def run():
         run_automation()
         return jsonify({"message": "Success"}), 200
     except Exception as e:
-        return jsonify({"status": "fail", "error": e})
+        return jsonify({"status": "fail", "error": str(e)}), 500
 
 
 if __name__ == "__main__":
