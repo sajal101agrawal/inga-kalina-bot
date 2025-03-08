@@ -1,16 +1,14 @@
-from flask import Flask, request, jsonify, send_file
-import requests
+from flask import Flask, jsonify
 from flask_cors import CORS
 from openai import OpenAI
 import uuid
-import datetime
 import time
 import os
 from html2image import Html2Image
-from io import BytesIO
 import json
 from faker import Faker 
 from PIL import Image
+from submit_form import submit_multi_step_zoho_form
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -45,7 +43,7 @@ WHATSAPP_TEMPLATE = """
     <div class="header">
         <div class="header-content">
             <div class="back-button">‹</div>
-            <img src="https://via.placeholder.com/40" class="profile-pic">
+            <div class="profile-pic"></div>
             <div class="contact-info">
                 <div class="contact-name">{name}</div>
                 <div class="online-status">online</div>
@@ -112,6 +110,7 @@ body {
     height: 40px;
     border-radius: 50%;
     margin-right: 10px;
+    background: #ddd
 }
 
 .contact-info {
@@ -218,8 +217,7 @@ def generate_conversation():
     except Exception as e:
         print(f"API Error: {str(e)}")
         return {"error": "Conversation generation failed"}
-    
-    
+     
 def split_conversation(conversation):
     """Split conversation into 3 logical parts for screenshots"""
     total = len(conversation['messages'])
@@ -229,9 +227,8 @@ def split_conversation(conversation):
         conversation['messages'][2*total//3:]
     ]
     
-
 # In create_whatsapp_html function:
-def create_whatsapp_html(conversation_part):
+def create_whatsapp_html(conversation_part, first_name):
     """Generate WhatsApp-like HTML with full UI"""
     messages_html = []
     for msg in conversation_part:
@@ -245,27 +242,30 @@ def create_whatsapp_html(conversation_part):
     
     return WHATSAPP_TEMPLATE.format(
         css=WHATSAPP_CSS,
-        name=fake.first_name(),
+        name=first_name,
         messages="\n".join(messages_html)
     )
 
-
-
-def submit_to_zoho(screenshot_paths):
-    """Submit screenshot to Zoho Form"""
-
-
-# --------------------------------------------------------------
-
-@app.route("/generate", methods=["POST"])
-def generate_screenshots():
+def submit_to_zoho(screenshot_paths, first_name):
+    
+    submit_multi_step_zoho_form(
+        url=ZOHO_FORM_URL,
+        file_paths=screenshot_paths,
+        first_name=first_name,
+        last_name=fake.last_name(),
+        email=fake.email(),
+        phone_number=fake.phone_number(),
+    )
+    
+def run_automation():
+    first_name = fake.first_name()
     try:
         # 1. Generate conversation
         conversation = generate_conversation()
         if 'error' in conversation:
             return jsonify({"error": "Conversation generation failed"}), 500
         
-        # 2. Split into 3 parts
+        # 2. Split conversation into 3 parts
         parts = split_conversation(conversation)
         
         # 3. Generate and submit screenshots
@@ -274,7 +274,7 @@ def generate_screenshots():
         
         for i, part in enumerate(parts):
             # Generate HTML
-            html_content = create_whatsapp_html(part)
+            html_content = create_whatsapp_html(part, first_name)
             
             # Generate a unique filename
             unique_id = str(uuid.uuid4())
@@ -300,23 +300,15 @@ def generate_screenshots():
             width, height = img.size
             img.crop((0, 0, width, height - 200)).save(screenshot_path)
 
-
             time.sleep(0.5)
-    
             screenshot_paths.append(screenshot_path)
             
-        
-        # TEMPORARY RETURN ---------------------------------------------
-        return jsonify({"status": "success", "screenshots": screenshot_paths})
-
-
-            
         # 4. Submit screenshots to Zoho Form
-        submit_to_zoho(screenshot_paths)
+        submit_to_zoho(screenshot_paths, first_name)
         
         # 5 Cleanup temporary files
-        for path in screenshot_paths:
-            os.remove(path)
+        # for path in screenshot_paths:
+        #     os.remove(path)
         
         # 6 Cleanup temporary HTML files
         for path in html_content:
@@ -326,6 +318,18 @@ def generate_screenshots():
     
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+
+# --------------------------------------------------------------
+
+@app.route("/run", methods=["POST"])
+def run():
+    try:
+        run_automation()
+        return jsonify({"message": "Success"}), 200
+    except Exception as e:
+        return jsonify({"status": "fail", "error": e})
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5002, debug=True)

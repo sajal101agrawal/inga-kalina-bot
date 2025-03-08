@@ -1,4 +1,4 @@
-from faker import Faker
+from flask import jsonify
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -6,20 +6,15 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 import time
 
-ZOHO_FORM_URL = "https://forms.ingakalnina.com/ingakalnina/form/MissorMatch/formperma/NFBNE2POeln5oK56kHhxJTigSShna5y4T52M8tI0iW0"
+def submit_multi_step_zoho_form(url, file_paths, first_name, last_name, email, phone_number, wait_time=10):
 
-fake = Faker()
-
-def submit_multi_step_form(url, file_paths, first_name, last_name, email, phone_number, wait_time=10):
-
-    # Initialize the WebDriver (ensure the driver is in your PATH or provide the executable path)
+    # Initialize the WebDriver
     driver = webdriver.Chrome()
     driver.maximize_window()
     driver.get(url)
 
     try:
         wait = WebDriverWait(driver, wait_time)
-        
         i_am_ready = wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="oneFieldSwiperSliderDiv"]/div[1]/div/div/div/div[3]/a')))
         i_am_ready.click()
         
@@ -44,9 +39,27 @@ def submit_multi_step_form(url, file_paths, first_name, last_name, email, phone_
                     print(f"Entered '{value}' into field with XPath '{field_xpath}'.")
                 except TimeoutException:
                     print(f"Timeout while waiting for field with XPath '{field_xpath}'.")
+                    try:
+                        # Wait for the input field to be present and interactable
+                        input_field = wait.until(EC.element_to_be_clickable((By.XPATH, field_xpath)))
+                        input_field.clear()
+                        input_field.send_keys(value)
+                        print(f"Entered '{value}' into field with XPath '{field_xpath}'.")
+                    except TimeoutException:
+                        print(f"Timeout while waiting for field with XPath '{field_xpath}'.")
+                        try:
+                            # Wait for the input field to be present and interactable
+                            first_name_input = driver.find_element(By.CSS_SELECTOR, 'input[elname="First"]')
+                            first_name_input.clear()
+                            first_name_input.send_keys(value)
+                            print(f"Entered '{value}' into field with XPath '{field_xpath}'.")
+                        except TimeoutException:
+                            print(f"Timeout while waiting for field with XPath '{field_xpath}'.")
+                        
                 except NoSuchElementException:
                     print(f"Could not find field with XPath '{field_xpath}'.")
-                 
+                
+                time.sleep(1)
                  
             # Click the "Next" button
             try:
@@ -54,8 +67,7 @@ def submit_multi_step_form(url, file_paths, first_name, last_name, email, phone_
                 time.sleep(2)
             except Exception as e:
                 print(f"An error occurred: {e}")
-                
-                
+                     
         # Check all input boxes
         input_boxes = [
             '//*[@id="Checkbox1-li"]/div[1]/div[2]/div[1]/div/span[1]/label',
@@ -77,6 +89,8 @@ def submit_multi_step_form(url, file_paths, first_name, last_name, email, phone_
                 print(f"Timeout while waiting for '{box}' button with XPath '{box}'.")
             except NoSuchElementException:
                 print(f"Could not find '{box}' button with XPath '{box}'.")
+                
+            time.sleep(1)
                     
         # Click the "Next" button
         try:
@@ -84,7 +98,6 @@ def submit_multi_step_form(url, file_paths, first_name, last_name, email, phone_
             time.sleep(2)
         except Exception as e:
             print(f"An error occurred: {e}")
-            
             
         try:
             # Click on the Select2 dropdown to open options
@@ -101,14 +114,12 @@ def submit_multi_step_form(url, file_paths, first_name, last_name, email, phone_
         except Exception as e:
             print(f"Error: {e}")
             
-        
         # Click the "Next" button
         try:
             driver.execute_script("goNext()")
             time.sleep(2)
         except Exception as e:
             print(f"An error occurred: {e}")
-            
             
         # Upload files
         try:
@@ -126,7 +137,6 @@ def submit_multi_step_form(url, file_paths, first_name, last_name, email, phone_
         except Exception as e:
             print(f"Error: {e}")
             
-            
         # Click the "Next" button
         try:
             driver.execute_script("goNext()")
@@ -134,9 +144,6 @@ def submit_multi_step_form(url, file_paths, first_name, last_name, email, phone_
         except Exception as e:
             print(f"An error occurred: {e}")
             
-        
-        
-        
         # Fill out name
         try:
             input_field = wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="SingleLine-li"]/div[1]/div[2]/div[1]/input')))
@@ -148,14 +155,12 @@ def submit_multi_step_form(url, file_paths, first_name, last_name, email, phone_
         except NoSuchElementException:
             print(f"Could not find phone number field.")
             
-            
         # Click the "Next" button
         try:
             driver.execute_script("goNext()")
             time.sleep(2)
         except Exception as e:
             print(f"An error occurred: {e}")
-            
             
         # Accept terms
         try:
@@ -170,7 +175,6 @@ def submit_multi_step_form(url, file_paths, first_name, last_name, email, phone_
             except Exception as e:
                 print(f"Error: {e}")
                 
-    
         # Click the "Next" button
         try:
             driver.execute_script("goNext()")
@@ -178,7 +182,6 @@ def submit_multi_step_form(url, file_paths, first_name, last_name, email, phone_
         except Exception as e:
             print(f"An error occurred: {e}")
 
-        
         # Fill out phone number
         try:
             # Locate the phone number input field
@@ -191,7 +194,6 @@ def submit_multi_step_form(url, file_paths, first_name, last_name, email, phone_
 
             # Wait to see the result
             time.sleep(3)
-
         except Exception as e:
             print(f"Error: {e}")
             
@@ -228,29 +230,11 @@ def submit_multi_step_form(url, file_paths, first_name, last_name, email, phone_
         time.sleep(15)
         
         print("Form submitted successfully!")
-                
+        return jsonify({"status": "success"})
             
     except Exception as e:
         print(f"An error occurred: {e}")
+        return jsonify({"status": "fail", "error": e})
 
     finally:
         driver.quit()
-
-
-
-
-if __name__ == "__main__":
-    screenshot_paths = [
-        "/Users/sajalagrawal/Developer/website-projects/inga-kalina-bot/screenshots/screenshot_b614488d-6dc3-4fdf-b148-10169924fd20.png",
-        "/Users/sajalagrawal/Developer/website-projects/inga-kalina-bot/screenshots/screenshot_602988ef-c617-4abc-8e29-69d0fd114748.png",
-        "/Users/sajalagrawal/Developer/website-projects/inga-kalina-bot/screenshots/screenshot_53c605ba-3c15-4916-bed5-009087eeba12.png"
-    ]
-    
-    submit_multi_step_form(
-        url=ZOHO_FORM_URL,
-        file_paths=screenshot_paths,
-        first_name=fake.first_name(),
-        last_name=fake.last_name(),
-        email="sajal101agrawal@gmail.com",
-        phone_number=fake.phone_number(),
-    )
