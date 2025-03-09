@@ -97,6 +97,10 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    font-family: -apple-system, BlinkMacSystemFont, 
+               'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell,
+               'Helvetica Neue', sans-serif,
+               'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji';
 }
 
 /* Header Section */
