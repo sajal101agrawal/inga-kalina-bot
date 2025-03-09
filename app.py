@@ -29,11 +29,23 @@ ZOHO_FORM_URL = os.getenv("ZOHO_FORM_URL")
 # Initialize clients
 fake = Faker()
 client = OpenAI(api_key=OPENAI_API_KEY)
+# hti = Html2Image(
+#     browser_executable='chromium',
+#     custom_flags=['--headless=new'],
+#     output_path=SCREENSHOT_DIR,
+#     ) 
 hti = Html2Image(
-    browser_executable='chromium',
-    custom_flags=['--headless=new'],
+    browser_executable='/usr/bin/google-chrome', 
+    custom_flags=[
+        '--headless=new',
+        '--no-sandbox',
+        '--disable-gpu',
+        '--disable-dev-shm-usage',
+        '--remote-debugging-port=9222',
+        '--force-device-scale-factor=1'
+    ],
     output_path=SCREENSHOT_DIR,
-    ) 
+)
 
 # WhatsApp-style HTML template
 WHATSAPP_TEMPLATE = """
