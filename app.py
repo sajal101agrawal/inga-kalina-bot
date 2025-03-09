@@ -41,7 +41,6 @@ hti = Html2Image(
         '--no-sandbox',
         '--disable-gpu',
         '--disable-dev-shm-usage',
-        '--remote-debugging-port=9222',
         '--force-device-scale-factor=1'
     ],
     output_path=SCREENSHOT_DIR,
