@@ -182,7 +182,7 @@ body {
     padding: 5px;
     padding-top: 0px;
     height: 560px;  /* 680 - 60 (header) - 60 (input) */
-    overflow-y: auto;
+    overflow-y: hidden;
 }
 
 /* Input Bar */
