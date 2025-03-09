@@ -3,3 +3,4 @@ venv/
 screenshots/
 .env
 __pycache__/
+credentials.json

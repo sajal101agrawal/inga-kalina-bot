@@ -11,6 +11,8 @@ from faker import Faker
 from PIL import Image
 from submit_form import submit_multi_step_zoho_form
 from dotenv import load_dotenv
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
 load_dotenv()
 
@@ -25,6 +27,9 @@ SCREENSHOT_CONFIG = {
 }
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ZOHO_FORM_URL = os.getenv("ZOHO_FORM_URL")
+CREDENTIALS_FILE_NAME = 'credentials.json'
+GOOGLE_SHEET_ID = "1KP8STQJ_eE-CBxLICD4eUD4t1rJbb-wSmO8dUtSZGzE"
+
 
 # Initialize clients
 fake = Faker()
@@ -227,18 +232,42 @@ DOUBLE_BLUE_TICK = """<svg viewBox="0 0 16 11" height="11" width="16" preserveAs
 
 # --------------------------------------------------------------
 
-def generate_conversation():
-    """Generate realistic WhatsApp-style conversation with 3 logical breaks making sure that each part has equal number and length of messages"""
-    prompt = """
-    Generate a realistic WhatsApp conversation between two people discussing relationship issues.
-    Follow these rules:
-    1. IMPORTANT: Create 30 messages total having similar length.
-    2. Include natural breaks where screen transitions would occur
-    3. Return ONLY RAW JSON (no markdown formatting) with structure:
-       { "messages": [{"sender": "PersonA/PersonB", "text": "...", "time": "HH:MM"}] }
-    4. Include realistic timing between messages
-    5. Use casual language with emojis and typos
-    """
+def load_prompt():
+    try:
+        # Authenticate
+        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+        creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+        client = gspread.authorize(creds)
+        
+        # Open the sheet
+        sheet = client.open_by_key(GOOGLE_SHEET_ID).worksheet("Sheet1")
+
+        # Get values
+        prompt = sheet.acell('B2').value
+
+        if not prompt:
+            raise ValueError("Error: Cell B2 is empty or inaccessible.")
+        
+        return prompt.strip()
+
+    except Exception as e:
+        print("Error on getting prompt: ", e)
+        return      """
+                    Generate a realistic WhatsApp conversation between two people discussing relationship issues.
+    
+                    """
+
+def generate_conversation(prompt):
+    
+    prompt += """
+                IMPORTANT - Follow these rules:
+                1. IMPORTANT: Create 30 messages total having similar length.
+                2. Include natural breaks where screen transitions would occur
+                3. Return ONLY RAW JSON (no markdown formatting) with structure: 
+                    { "messages": [{"sender": "PersonA/PersonB", "text": "...", "time": "HH:MM"}] }
+                4. Include realistic timing between messages
+                5. Use casual language with emojis and typos
+            """
 
     response = client.chat.completions.create(
         model="gpt-4o",
@@ -262,7 +291,6 @@ def split_conversation(conversation):
         conversation['messages'][2*total//3:]
     ]
     
-# Create_whatsapp_html function:
 def create_whatsapp_html(conversation_part, first_name, uniqueSeedValue):
     """Generate WhatsApp-like HTML with full UI and ticks"""
     messages_html = []
@@ -299,20 +327,23 @@ def submit_to_zoho(screenshot_paths, first_name):
     
 def run_automation():
     first_name = fake.first_name()
+    
+    # 1.  Get Prompt
+    prompt = load_prompt()
 
-    # 1. Generate conversation
-    conversation = generate_conversation()
+    # 2. Generate conversation
+    conversation = generate_conversation(prompt)
     if 'error' in conversation:
         return jsonify({"error": "Conversation generation failed"}), 500
     
-    # 2. Split conversation into 3 parts
+    # 3. Split conversation into 3 parts
     parts = split_conversation(conversation)
     
-    # 3. Generate and submit screenshots
+    # 4. Generate and submit screenshots
     screenshot_paths = []
     html_paths = []
     
-    # Generate random seed value
+    # 5. Generate random seed value
     uniqueSeedValue = random.randint(1, 999)
     
     for i, part in enumerate(parts):
@@ -347,14 +378,14 @@ def run_automation():
         time.sleep(0.5)
         screenshot_paths.append(screenshot_path)
         
-    # 4. Submit screenshots to Zoho Form
+    # 6. Submit screenshots to Zoho Form
     submit_to_zoho(screenshot_paths, first_name)
     
-    # 5 Cleanup temporary files
+    # 7. Cleanup temporary files
     # for path in screenshot_paths:
     #     os.remove(path)
     
-    # 6 Cleanup temporary HTML files
+    # 8. Cleanup temporary HTML files
     for path in html_paths:
             os.remove(path)
         
