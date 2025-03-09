@@ -338,7 +338,7 @@ def run_automation():
         # Crop the bottom 100px
         img = Image.open(screenshot_path)
         width, height = img.size
-        img.crop((0, 0, width, height - 200)).save(screenshot_path)
+        img.crop((0, 0, width, height - 1)).save(screenshot_path)
 
         time.sleep(0.5)
         screenshot_paths.append(screenshot_path)
