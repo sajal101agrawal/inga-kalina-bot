@@ -378,6 +378,9 @@ def run_automation():
         time.sleep(0.5)
         screenshot_paths.append(screenshot_path)
         
+    # Reverse the screenshot paths
+    screenshot_paths.reverse()
+        
     # 6. Submit screenshots to Zoho Form
     submit_to_zoho(screenshot_paths, first_name)
     
