@@ -261,12 +261,21 @@ def generate_conversation(prompt):
     
     prompt += """
                 IMPORTANT - Follow these rules:
-                1. IMPORTANT: Create 30 messages total having similar length.
-                2. Include natural breaks where screen transitions would occur
-                3. Return ONLY RAW JSON (no markdown formatting) with structure: 
-                    { "messages": [{"sender": "PersonA/PersonB", "text": "...", "time": "HH:MM"}] }
-                4. Include realistic timing between messages
-                5. Use casual language with emojis and typos
+                1. Create exactly 30 messages total, each with a similar length.
+                2. Include natural breaks where screen transitions would occur.
+                3. Return ONLY RAW JSON (no markdown formatting) with this structure:
+                {
+                    "messages": [
+                    { "sender": "PersonA", "text": "...", "time": "HH:MM" },
+                    { "sender": "PersonB", "text": "...", "time": "HH:MM" },
+                    ...
+                    ]
+                }
+                4. Include realistic and varying times in "HH:MM" format for each message.
+                5. Use casual, natural texting language (typos, emojis, etc.) as appropriate.
+                6. **Always** use "PersonA" or "PersonB" in the "sender" field — even if the user prompt specifies names.
+                7. Make sure the dialogue feels authentic with realistic pacing, tone shifts, and style.
+
             """
 
     response = client.chat.completions.create(
